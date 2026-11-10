@@ -1,0 +1,19 @@
+{
+  "name": "finance-opensource",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open Source Local-First Financial Operating System & Swappable Agent Engine",
+  "packageManager": "pnpm@12.18.0",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "dev": "turbo run dev",
+    "debate:loop": "tsx scripts/debate-loop.ts"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2",
+    "tsx": "^4.19.3"
+  }
+}

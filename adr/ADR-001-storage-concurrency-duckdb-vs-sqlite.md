@@ -19,22 +19,23 @@
 
 ---
 
-## 2. Hakem Kararı ve Sentez: Çift Katmanlı Hibrit Depolama (Dual-Engine Storage)
+## 2. Hakem Kararı ve Sentez: 3 Katmanlı Ayrık Depolama (L1 Ring-Buffer + L2 SQLite WAL + L3 Parquet/DuckDB)
 
-Hakem olarak Mühendisin analitik hız ihtiyacını ve GitHub Analistinin somut kilitlenme uyarısını birleştiren **Hibrit Mimariyi** onaylıyorum:
+Hakem olarak Mühendisin analitik hız ihtiyacını, Yanal Düşünür'ün "Arı Kursağı" (Honey-Crop) modelini ve GitHub Analisti ile Şüpheci'nin kilitlenme kanıtlarını sentezleyen **3 Katmanlı Mimarisi** onaylanmıştır:
 
-1. **Sıcak Katman (Hot Storage - SQLite WAL Modu):**
-   - Son 24 saatlik anlık tick verileri, açık emirler, kullanıcı ayarları ve aktif portföy bakiyesi **SQLite** içinde tutulur.
-   - `PRAGMA journal_mode = WAL;` ve `PRAGMA synchronous = NORMAL;` ile tek yazıcı (WebSocket ingest) ve sınırsız paralel okuyucu (UI & Ajanlar) kilitlenmeden çalışır.
-2. **Soğuk Katman (Cold Storage - DuckDB / Parquet Bölümleme):**
-   - 24 saati aşan tarihsel mumlar günlük/aylık `.parquet` dosyalarına aktarılır (Archiver Job).
-   - DuckDB bu dosyalara yalnızca **READ-ONLY** veya izole bellek içi (`:memory:`) oturumlarla bağlanarak vektör hesaplamalarını yapar.
-   - Böylece DuckDB yazma kilidi hiçbir zaman WebSocket canlı akışını engellemez.
+1. **L1 Uçucu Katman (Honey-Crop / Ring Buffer):**
+   - Canlı WebSocket tick verileri doğrudan RAM'de tahsisatsız (Zero-Allocation TypedArray) dairesel arabellekte (Ring Buffer) işlenir. Sıfır I/O, sıfır kilitlenme.
+2. **L2 Sıcak Katman (Hot Storage - SQLite WAL Modu):**
+   - 1 dakikalık kapanmış mumlar, açık emirler, kullanıcı ayarları ve anlık portföy bakiyesi **SQLite** içine yazılır.
+   - `PRAGMA journal_mode = WAL;` ve `PRAGMA synchronous = NORMAL;` ile tek yazıcı (WebSocket ingest worker) ve sınırsız paralel okuyucu (UI & Ajanlar) kilitlenmeden çalışır.
+3. **L3 Soğuk Katman (Cold Storage - DuckDB / Parquet Bölümleme):**
+   - 24 saati aşan tarihsel mumlar `sqlite3_backup` ve chunk bazlı atomik aktarımla sıkıştırılmış `.parquet` dosyalarına dökülür.
+   - DuckDB bu dosyalara yalnızca **READ-ONLY** veya izole bellek içi (`:memory:`) oturumlarla bağlanarak vektör hesaplamalarını ve backtest'leri yapar.
+   - Canlı veri yazma hattı ile analitik sorgu hattı fiziksel olarak ayrılmıştır; kilitlenme imkânsızdır.
 
 ---
 
 ## 3. Ayakta Kalan İtirazlar & Test Edilecek Bilinmeyenler
 
-- **İtiraz:** SQLite'tan Parquet'ye aktarım sırasında RAM sıçraması (OOM) riski.
-- **Bilinmeyen:** PC uyku moduna geçerken WAL checkpoint işleminin yarıda kalıp kalmayacağı.
-- **Test:** `pnpm test:concurrency` ile 1.000 req/sec yazma sırasında 100.000 satırlık DuckDB sorgusu eşzamanlı çalıştırılacak.
+- **Ayakta Kalan İtiraz (Şüpheci & Kırmızı Takım):** SQLite WAL checkpoint sırasında PC'ye aniden elektrik kesintisi gelmesi veya işletim sisteminin kapanması durumunda Parquet transfer bütünlüğü.
+- **Test Edilecek Bilinmeyen:** `pnpm test:concurrency` ile saniyede 2.000 işlem yazılırken süreç `SIGKILL` ile durdurulacak ve WAL recovery doğrulanacaktır.

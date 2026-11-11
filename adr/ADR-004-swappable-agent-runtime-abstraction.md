@@ -21,7 +21,19 @@
 1. **Ortak Sözleşme (`IAgentDriver`):**
    - Her motor adaptörü (Driver) initialize, registerTools, createSession, sendMessage ve abort metodlarını sağlamalıdır.
    - Araçlar JSON Schema standardında tanımlanır; adaptörler bunu hedef motorun native formatına çevirir (MCP / Anthropic tools / OpenAI function calling).
-2. **Çalışma Anında Geçiş (Dynamic Engine Swap):**
-   - `AgentEngineManager.switchDriver('pi' | 'claude-code' | 'codex')` çağrısı oturum durumunu ve araç listesini koruyarak motoru anında değiştirir.
-3. **Maliyet Kalkanı:**
-   - Testlerde sıfır maliyetli ve deterministik `MockAgentDriver` kullanılır.
+2. **İki Katmanlı Tavsiye ve Yürütme Mimarisi (Dual-Envelope Architecture):**
+   - **Bilişsel Katman (LLM / Agent):** Pi, Claude Code, Codex veya Ollama; yalnızca analiz yapar ve `OrderProposal` (Emir Teklifi) nesnesi oluşturur. Doğrudan borsa API'sine erişemez.
+   - **Deterministik Risk Kalkanı (RiskGuard):** Teklif edilen emirler katı TypeScript kurallarıyla denetlenir:
+     - Tek işlemde azami sermaye riski (örn. bakiyenin %1'i).
+     - Günlük devre kesici (Circuit Breaker: %3 kayıpta 24 saat işlem kilidi).
+     - Acemi kullanıcı modu: Kullanıcı mobil push bildiriminden "Onayla" butonuna basmadıkça emir borsaya iletilemez.
+3. **Çalışma Anında Geçiş ve Maliyet Kalkanı:**
+   - `AgentEngineManager.switchDriver('pi' | 'claude-code' | 'codex' | 'ollama')` çağrısı oturum durumunu koruyarak motoru anında değiştirir.
+   - 100 saatlik otonom tartışma döngüleri için deterministik `MockAgentDriver` veya yerel Ollama motoru kullanılır; bulut modelleri için saatlik harcama kotası uygulanır.
+
+---
+
+## 3. Ayakta Kalan İtirazlar & Test Edilecek Bilinmeyenler
+
+- **Ayakta Kalan İtiraz (Vizyoner):** Mikrosaniyelik istatistiksel arbitrajda kullanıcı onayının fırsatı kaçırması (HFT işlemleri LLM'e değil, `compute-engine` C++/Rust algoritmalarına devredilmiştir).
+- **Test Edilecek Bilinmeyen:** Claude Sonnet vs OpenAI vs DeepSeek modellerinin Zod şemalı finans araçlarını çağırma hata ve halüsinasyon oranları (`pnpm test:headless`).

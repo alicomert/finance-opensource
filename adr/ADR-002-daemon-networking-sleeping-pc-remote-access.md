@@ -22,16 +22,19 @@
 
 ## 2. Hakem Kararı ve Sentez
 
-1. **Katmanlı Keşif ve Bağlantı (Tiered Fallback):**
-   - **Kademe 1 (Aynı Ağ):** mDNS Bonjour yayını ile sıfır gecikmeli yerel IP bağlantısı.
-   - **Kademe 2 (Farklı Ağ / Hücresel):** Kullanıcı dostu Tailscale / WireGuard Derp P2P tüneli veya opsiyonel uçtan uca şifreli Cloudflare Tunnel.
-2. **PC Güç Yönetimi:**
-   - Daemon Windows'ta `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)` çağrısı ile PC'nin işlem yaparken derin uykuya dalmasını engeller (ekran kapanabilir ama CPU uyanık kalır).
-   - Mobil istemci bağlantı koptuğunda hafif bir push bildirimiyle kullanıcıyı uyarır ve son portföy anlık görüntüsünü (snapshot cache) gösterir.
+1. **Katmanlı Sıfır Yapılandırmalı Bağlantı (Zero-Config Tiered Networking):**
+   - **Kademe 1 (Aynı Ağ - LAN):** mDNS Bonjour yayını ile sıfır gecikmeli yerel WebSocket bağlantısı (internet yokken dahi çalışır).
+   - **Kademe 2 (Farklı Ağ / Hücresel - WAN):** Kullanıcıya port açtırmayan, QR kod eşleşmeli gömülü **WebRTC DataChannel (P2P)** bağlantısı. Üçüncü taraf VPN/Tailscale zorunluluğu kaldırılmıştır; doğrudan tarayıcı/mobil P2P tüneli kurulur.
+2. **Kilitli Kasa Tasfiye Kalkanı (Server-Side Native Failsafe):**
+   - Kırmızı Takım'ın tasfiye senaryosunu engellemek amacıyla; tüm Stop-Loss ve Take-Profit emirleri yerel daemon üzerinde değil, **doğrudan borsa sunucusuna (Server-side Native OCO/SL)** iletilir.
+   - PC kapağı kapansa, elektrik kesilse veya ağ kopsa dahi borsa motoru açık pozisyonu korur; PC çöküşü likidasyona yol açamaz.
+3. **PC Güç Yönetimi:**
+   - Daemon Windows üzerinde `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED)` çağrısı ile ekran kapalıyken dahi CPU ve ağ kartını uyanık tutar.
+   - Mobil istemci PC ile bağlantı 60 saniye kesildiğinde kullanıcıyı yerel acil durum bildirimiyle uyarır ve tek tuşla borsa acil iptal seçeneği sunar.
 
 ---
 
 ## 3. Ayakta Kalan İtirazlar & Test Edilecek Bilinmeyenler
 
-- **İtiraz:** Şüpheci: "Kullanıcıya Tailscale kurdurmak sürtünmeyi artırır."
-- **Sentez Cevabı:** Sıfır yapılandırmalı gömülü WebRTC veri kanalı (DataChannel) araştırılacak.
+- **Ayakta Kalan İtiraz (Şüpheci):** Ücretsiz genel STUN/TURN sunucularının yüksek volatilite anında paket gecikmesi yaşaması.
+- **Test Edilecek Bilinmeyen:** Wi-Fi'dan 4G/5G hücresel ağa geçişte WebRTC ICE restart gecikmesi ve emir TTL davranışı.

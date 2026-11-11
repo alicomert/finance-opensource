@@ -21,6 +21,20 @@
 
 ## 2. Hakem Kararı ve Sentez
 
-1. **Grafik Motoru:** `@luxalgo/vela` (WebGL2) birincil görselleştirme motoru olarak seçilmiştir.
-2. **Pine Script İzolasyonu:** `@luxalgo/vela-pinets` derleyicisi ve çalışma zamanı **Web Worker** içine hapsedilir. Ana UI thread'i yalnızca çizim emirlerini (JSON drawing instructions) alır.
-3. **Fallback:** Düşük donanımlı mobil cihazlarda isteğe bağlı hafif 2D mod korunur.
+1. **Donanıma Duyarlı Çift Çizim Hattı (Dual-Render Engine):**
+   - **Masaüstü ve Yüksek Performanslı İstemciler:** `@luxalgo/vela` (WebGL2) birincil motor olarak kullanılır; 100.000 mumu 60 FPS akıcı çizer.
+   - **Mobil ve Pil Tasarruf Modu:** Düşük donanımlı cihazlarda otomatik olarak TradingView Lightweight Charts (2D Canvas) moduna düşülür (Graceful Degradation).
+2. **Pine Script Sandboxing ve Watchdog Zamanlayıcısı:**
+   - `@luxalgo/vela-pinets` derleyicisi ve çalışma zamanı **Web Worker** içine hapsedilir.
+   - Script yürütmesine katı bir **Watchdog Timer (azami 500ms bütçe)** konur. Sonsuz döngüye giren veya bütçeyi aşan betik anında sonlandırılır (`worker.terminate()`); ana kullanıcı arayüzü tek bir kare bile takılmaz.
+3. **Uyarlanabilir LoD (Adaptive Level of Detail):**
+   - 100.000 mum dahi olsa ekrandaki yatay piksel yoğunluğu kadar veri LTTB algoritması ile GPU'ya basılır; gereksiz draw call'lar engellenir, fanlar bağırmaz.
+4. **Otomatik WebGL Context Recovery:**
+   - `webglcontextlost` olayı dinlenir; GPU belleği tükendiğinde motor çökmeden oturumu temizler ve 2D Canvas moduna kesintisiz geçiş yapar.
+
+---
+
+## 3. Ayakta Kalan İtirazlar & Test Edilecek Bilinmeyenler
+
+- **Ayakta Kalan İtiraz (Şüpheci):** iOS Safari üzerinde arka plana atılan sekmelerde WebGL bellek temizliğinin gecikmesi.
+- **Test Edilecek Bilinmeyen:** 100.000 mum + 10 aktif indikatör + özel Pine Script çalışırken 1 saatlik bellek sızıntısı (memory leak) testi.
